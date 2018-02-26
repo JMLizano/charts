@@ -16,7 +16,7 @@ You can connect to Kafka by running a simple pod in the K8s cluster like this wi
 
 Once you have the testclient pod above running, you can list all kafka
 topics with:
-
+## TODO: This tests are not very robust, depend on the image used, maybe better idea to use bin/ dir of kafka
   kubectl -n {{ .Release.Namespace }} exec testclient -- /usr/bin/kafka-topics --zookeeper {{ .Release.Name }}-zookeeper:2181 --list
 
 To create a new topic:

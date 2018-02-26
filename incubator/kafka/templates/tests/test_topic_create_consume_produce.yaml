@@ -12,6 +12,9 @@ spec:
     - sh
     - -c
     - |
+      # TODO: Should remove the topic/message after tests, otherwise subsequent tests will fail
+      # TODO: Should remove the POD after the test? If not it is necessary to delete it manually if you
+      # want to run the test again/later
       # Create the topic
       kafka-topics --zookeeper {{ template "zookeeper.url" . }} --topic helm-test-topic-create-consume-produce --create --partitions 1 --replication-factor 1 --if-not-exists && \
       # Create a message
