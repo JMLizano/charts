@@ -67,6 +67,7 @@ spec:
               name: "{{ $configMapName }}"
               key: log.dirs
         {{- range $configName := (keys .Values.configurationOverrides) }}
+        #TODO: The prefix KAFKA_ here seems a little hacky/specific of confluent image
         - name: KAFKA_{{ $configName | replace "." "_" | upper }}
           valueFrom:
             configMapKeyRef:
