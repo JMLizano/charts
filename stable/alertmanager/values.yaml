@@ -1,0 +1,50 @@
+rbac:
+  create: true
+
+# Deployment mode to use, one of:
+# - Deployment: For testing/dev purposes. Deploys as a deployment with no HA modes
+# - StatefulSet: For prod, HA mode enabled
+# - Prometheus-operator: To use only with prometheus-operator, use its CRD/TPR to create the alertmanager component
+deploymentMode: Deployment
+
+## If false, alertmanager will not be installed
+##
+enabled: true
+
+# Defines the serviceAccountName to use when `rbac.create=false`
+serviceAccountName: default
+
+## alertmanager container name
+##
+name: alertmanager
+
+## alertmanager container image
+##
+image:
+  repository: prom/alertmanager
+  tag: v0.13.0
+  pullPolicy: IfNotPresent
+
+## Additional alertmanager container arguments
+##
+extraArgs: {}
+
+## The URL prefix at which the container can be accessed. Useful in the case the '-web.external-url' includes a slug
+## so that the various internal URLs are still able to access as they are in the default case.
+## (Optional)
+prefixURL: ""
+
+## External URL which can access alertmanager
+## Maybe same with Ingress host name
+baseURL: "/"
+
+## Additional alertmanager container environment variable
+## For instance to add a http_proxy
+##
+extraEnv: {}
+
+## ConfigMap override where fullname is {{.Release.Name}}-{{.Values.alertmanager.configMapOverrideName}}
+## Defining configMapOverrideName will cause templates/alertmanager-configmap.yaml
+## to NOT generate a ConfigMap resource
+##
+configMapOverrideName: ""

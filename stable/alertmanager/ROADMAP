@@ -1,0 +1,22 @@
+This repo will merge:
+ - Alertmanager from prometheus chart 
+ - Alertmanager chart from prometheus-operator repo
+
+It should support the following installing modes:
+ - Deployment: For testing/dev purposes. Deploys as a deployment with no HA modes
+ - StatefulSet: For prod, HA mode enabled
+ - Prometheus-operator component: To use only with prometheus-operator, use its CRD/TPR to create the alertmanager component
+
+ Tasks:
+ - Implement support for deployment installing mode
+    - 1 with no PV no rbac
+    - Then with PV no rbac
+    - Then with PV and rbac
+ - Implement support for StatefulSet installing mode
+    - Should inspect Stateful set created by prometheus operator and copy its   
+ - Implement prometheus-operator installing mode
+    - Copy from prometheus operator repo
+ - Merge values.yaml
+    - Remove non necessary parameters inherited from prometheus chart
+ - Merge _helpers.tpl
+
