@@ -1,0 +1,30 @@
+{{- if eq .Values.deploymentMode "StatefulSet" -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "alertmanager.fullname" . }}-headless
+  labels:
+    app: {{ include "alertmanager.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+spec:
+  ports:
+    - name: {{ .Values.service.webPortName }}
+      port: {{ .Values.service.webPort }}
+      protocol: TCP
+      targetPort: {{ .Values.service.webPort }}
+    {{- if .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+    {{- end }}
+    - name: {{ .Values.service.meshPortName }}
+      port: {{ .Values.service.meshPort }}
+      protocol: TCP
+      targetPort: {{ .Values.service.meshPort }}
+  clusterIP: None
+  selector:
+    app: {{ include "alertmanager.name" . }}
+    release: {{ .Release.Name }}
+{{- end }}

@@ -1,4 +1,8 @@
-{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.enabled -}}
+{{- $releaseName := .Release.Name -}}
+{{- $serviceName := include "alertmanager.fullname" . }}
+{{- $servicePort := .Values.service.webPort -}}
+{{- $hosts := or .Values.ingress.hosts (list .Values.ingress.fqdn) }} 
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -7,26 +11,25 @@ metadata:
 {{ toYaml .Values.ingress.annotations | indent 4 }}
 {{- end }}
   labels:
-    alertmanager: {{ .Release.Name }}
     app: {{ template "alertmanager.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     heritage: {{ .Release.Service }}
     release: {{ .Release.Name }}
-{{- if .Values.ingress.labels }}
-{{ toYaml .Values.ingress.labels | indent 4 }}
-{{- end }}
   name: {{ template "alertmanager.fullname" . }}
 spec:
   rules:
-    - host: "{{ .Values.ingress.fqdn }}"
+  {{- range $hosts }}
+    {{- $url := splitList "/" . }}
+    - host: {{ first $url }}
       http:
         paths:
-          - path: "{{ .Values.routePrefix }}"
+          - path: /{{ rest $url | join "/" }}
             backend:
-              serviceName: {{ template "alertmanager.fullname" . }}
-              servicePort: 9093
+              serviceName: {{ $serviceName }}
+              servicePort: {{ $servicePort }}
+  {{- end -}}
 {{- if .Values.ingress.tls }}
   tls:
 {{ toYaml .Values.ingress.tls | indent 4 }}
-{{- end }}
-{{- end }}
+  {{- end -}}
+{{- end -}}

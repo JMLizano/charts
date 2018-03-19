@@ -1,0 +1,126 @@
+{{- if eq .Values.deploymentMode "StatefulSet" -}}
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: {{ template "alertmanager.fullname" . }}
+  labels:
+    app: {{ template "alertmanager.name" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ default 3 .Values.replicaCount }}
+  serviceName: {{ template "alertmanager.fullname" . }}-headless
+{{- if .Values.nodeSelector }}
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
+{{- end }}
+{{- if .Values.updateStrategy }}
+  updateStrategy:
+{{ toYaml .Values.updateStrategy | indent 4 }}
+{{- end }}
+  selector:
+    matchLabels:
+      app: {{ template "alertmanager.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "alertmanager.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: {{ template "alertmanager.name" . }}
+        image:  "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+        env:
+          {{- range $key, $value := .Values.extraEnv }}
+          - name: {{ $key }}
+            value: {{ $value }}
+          {{- end }}
+        args:
+        - --config.file=/etc/alertmanager/config/alertmanager.yaml
+        - --storage.path={{ .Values.persistentVolume.mountPath }}
+        - --web.listen-address=:{{ .Values.service.webPort }}
+        - --mesh.listen-address=:{{ .Values.service.meshPort }}
+        {{- range $key, $value := .Values.extraArgs }}
+        - --{{ $key }}={{ $value }}
+        {{- end }}
+        {{- if .Values.baseURL }}
+        - --web.external-url={{ .Values.baseURL }}
+        {{- end }}
+        {{- range $i := int .Values.replicaCount  | until }}
+        - --mesh.peer={{ template "alertmanager.fullname" $ }}-{{ $i}}.{{ template "alertmanager.fullname" $ }}-headless.monitoring.svc
+        {{- end }}
+        - --web.route-prefix=/
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        ports:
+        - containerPort: {{ .Values.service.webPort }}
+          name: {{ .Values.service.webPortName }}
+          protocol: TCP
+        - containerPort: {{ .Values.service.meshPort }}
+          name: {{ .Values.service.meshPortName }}
+          protocol: TCP
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/status
+            port: web
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        readinessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/v1/status
+            port: web
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/alertmanager/config
+        - name: data-volume
+          mountPath: "{{ .Values.persistentVolume.mountPath }}"
+      - name: {{ template "alertmanager.name" . }}-{{ .Values.configmapReload.name }}
+        image: "{{ .Values.configmapReload.image.repository }}:{{ .Values.configmapReload.image.tag }}"
+        imagePullPolicy: "{{ .Values.configmapReload.image.pullPolicy }}"
+        args:
+        - -webhook-url=http://localhost:{{ .Values.persistentVolume.mountPath }}/-/reload
+        - -volume-dir=/etc/alertmanager/config
+        resources:
+{{ toYaml .Values.configmapReload.resources | indent 10 }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/alertmanager/config
+          readOnly: true
+      volumes:
+      - name: config-volume
+        secret:
+          secretName: {{ if .Values.secretOverrideName }}{{ .Release.Name }}-{{ .Values.secretOverrideName }}{{- else }}{{ template "alertmanager.fullname" . }}{{- end }}
+      {{- if not .Values.persistentVolume.enabled }}
+      - name: data-volume
+        emptyDir: {}
+      {{- end -}}
+{{- if .Values.persistentVolume.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes:
+{{ toYaml .Values.persistentVolume.accessModes | indent 8 }}
+      {{- if .Values.persistentVolume.storageClass }}
+      {{- if (eq "-" .Values.persistentVolume.storageClass) }}
+      storageClassName: ""
+      {{- else }}
+      storageClassName: "{{ .Values.persistentVolume.storageClass }}"
+      {{- end }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.persistentVolume.size }}
+{{- end }}
+{{- end }}

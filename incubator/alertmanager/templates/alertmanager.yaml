@@ -1,3 +1,4 @@
+{{- if eq .Values.deploymentMode "PrometheusOperator" -}}
 apiVersion: {{ template "prometheus-operator.apiVersion" . }}
 kind: Alertmanager
 metadata:
@@ -57,4 +58,5 @@ spec:
 {{- if .Values.tolerations }}
   tolerations:
 {{ toYaml .Values.tolerations | indent 4 }}
+{{- end }}
 {{- end }}

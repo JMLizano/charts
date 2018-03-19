@@ -1,0 +1,257 @@
+rbac:
+  create: false
+
+
+fullnameOverride: alertmanager-main
+
+# Deployment mode to use, one of:
+# - StatefulSet: For prod, HA mode enabled
+# - Prometheus-operator: To use only with prometheus-operator, use its CRD/TPR to create the alertmanager component
+deploymentMode: PrometheusOperator
+
+replicaCount: 3
+# Defines the serviceAccountName to use when `rbac.create=false`
+serviceAccountName: default
+
+## alertmanager container name
+##
+name: alertmanager
+
+## alertmanager container image
+##
+image:
+  repository: quay.io/prometheus/alertmanager
+  tag: v0.14.0
+  pullPolicy: IfNotPresent
+
+## Additional alertmanager container arguments
+##
+extraArgs: {
+  "log.level": "debug"
+}
+
+## The URL prefix at which the container can be accessed. Useful in the case the '-web.external-url' includes a slug
+## so that the various internal URLs are still able to access as they are in the default case.
+## (Optional)
+prefixURL: ""
+
+## External URL which can access alertmanager
+## Maybe same with Ingress host name
+baseURL: "/"
+
+## Additional alertmanager container environment variable
+## For instance to add a http_proxy
+##
+extraEnv: {}
+
+## Secret override where fullname is {{.Release.Name}}-{{.Values.alertmanager.secretOverrideName}}
+## Defining secretOverrideName will cause templates/secret.yaml
+## to NOT generate a Secret resource
+##
+secretOverrideName: ""
+
+## Node tolerations for alertmanager scheduling to nodes with taints
+## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+##
+tolerations: []
+# - key: "key"
+#   operator: "Equal|Exists"
+#   value: "value"
+#   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+## Node labels for alertmanager pod assignment
+## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector: {}
+
+## Annotations to be added to alertmanager pods
+##
+podAnnotations: {}
+
+## alertmanager resource requests and limits
+## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+##
+resources: {}
+# limits:
+#   cpu: 10m
+#   memory: 32Mi
+# requests:
+#   cpu: 10m
+#   memory: 32Mi
+
+## Monitors ConfigMap changes and POSTs to a URL
+## Ref: https://github.com/jimmidyson/configmap-reload
+##
+configmapReload:
+  ## configmap-reload container name
+  ##
+  name: configmap-reload
+
+  ## configmap-reload container image
+  ##
+  image:
+    repository: quay.io/coreos/configmap-reload
+    tag: v0.0.1
+    pullPolicy: IfNotPresent
+
+  ## configmap-reload resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+
+persistentVolume:
+  ## If true, alertmanager will create/use a Persistent Volume Claim
+  ## If false, use emptyDir
+  ##
+  enabled: true
+
+  ## alertmanager data Persistent Volume access modes
+  ## Must match those of existing PV or dynamic provisioner
+  ## Ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+  ##
+  accessModes:
+      - ReadWriteOnce
+
+  ## alertmanager data Persistent Volume Claim annotations
+  ##
+  annotations: {
+    "Name": "alert-manager"
+  }
+
+  ## alertmanager data Persistent Volume existing claim name
+  ## Requires alertmanager.persistentVolume.enabled: true
+  ## If defined, PVC must be created manually before volume will be bound
+  existingClaim: ""
+
+  ## alertmanager data Persistent Volume mount root path
+  ##
+  mountPath: /data
+
+  ## alertmanager data Persistent Volume size
+  ##
+  size: 2Gi
+
+  ## alertmanager data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  # storageClass: "-"
+
+  ## Subdirectory of alertmanager data Persistent Volume to mount
+  ## Useful if the volume's root directory is not empty
+  ##
+  subPath: ""
+
+service:
+  annotations: {}
+  labels: {}
+  clusterIP: ""
+  webPort: 9093
+  webPortName: web
+  meshPort: 6783
+  meshPortName: mesh
+
+  ## Enabling peer mesh service end points for enabling the HA alert manager
+  ## Ref: https://github.com/prometheus/alertmanager/blob/master/README.md
+  # enableMeshPeer : true
+
+  ## List of IP addresses at which the alertmanager service is available
+  ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+  ##
+  externalIPs: []
+
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  servicePort: 80
+  # nodePort: 30000
+  type: LoadBalancer
+
+
+## Alertmanager configuration directives
+## Ref: https://prometheus.io/docs/alerting/configuration/
+##
+config:
+  global:
+    # slack_api_url: ''
+
+  receivers:
+    - name: default-receiver
+      # slack_configs:
+      #  - channel: '@you'
+      #    send_resolved: true
+
+  route:
+    group_wait: 10s
+    group_interval: 5m
+    receiver: default-receiver
+    repeat_interval: 3h
+
+
+## Alertmanager template files to include
+## Ref: https://prometheus.io/docs/alerting/notifications/
+templateFiles: {}
+#
+# An example template:
+#   template_1.tmpl: |-
+#       {{ define "cluster" }}{{ .ExternalURL | reReplaceAll ".*alertmanager\\.(.*)" "$1" }}{{ end }}
+#
+#       {{ define "slack.myorg.text" }}
+#       {{- $root := . -}}
+#       {{ range .Alerts }}
+#         *Alert:* {{ .Annotations.summary }} - `{{ .Labels.severity }}`
+#         *Cluster:*  {{ template "cluster" $root }}
+#         *Description:* {{ .Annotations.description }}
+#         *Graph:* <{{ .GeneratorURL }}|:chart_with_upwards_trend:>
+#         *Runbook:* <{{ .Annotations.runbook }}|:spiral_note_pad:>
+#         *Details:*
+#           {{ range .Labels.SortedPairs }} • *{{ .Name }}:* `{{ .Value }}`
+#           {{ end }}
+
+
+ingress:
+  ## If true, alertmanager Ingress will be created
+  ##
+  enabled: true
+
+  ## alertmanager Ingress annotations
+  ##
+  annotations: {}
+  #   kubernetes.io/ingress.class: nginx
+  #   kubernetes.io/tls-acme: 'true'
+
+  ## Labels to be added to the Ingress
+  ##
+  labels: {}
+
+  fqdn: "alertmanager.domain.com"
+  
+  ## alertmanager Ingress hostnames with optional path
+  ## Must be provided if Ingress is enabled
+  ##
+  hosts: []
+  #   - alertmanager.domain.com
+  #   - domain.com/alertmanager
+
+  ## alertmanager Ingress TLS configuration
+  ## Secrets must be manually created in the namespace
+  ##
+  tls: []
+  #   - secretName: prometheus-alerts-tls
+  #     hosts:
+  #       - alertmanager.domain.com
+
+  ## Alertmanager Deployment Strategy type
+  # strategy:
+  #   type: Recreate
+
+
+## OPERATOR
+podAntiAffinity: "soft"
+## If true, create a serviceMonitor for alertmanager
+##
+selfServiceMonitor: true
+
+## External URL at which Alertmanager will be reachable
+##
+externalUrl: ""

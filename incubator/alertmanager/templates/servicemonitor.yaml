@@ -1,3 +1,4 @@
+{{- if eq .Values.deploymentMode "PrometheusOperator" -}}
 {{- if .Values.selfServiceMonitor }}
 apiVersion: {{ template "prometheus-operator.apiVersion" . }}
 kind: ServiceMonitor
@@ -23,4 +24,5 @@ spec:
   endpoints:
   - port: http
     interval: 30s
+{{- end }}
 {{- end }}

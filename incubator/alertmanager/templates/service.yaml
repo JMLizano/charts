@@ -16,27 +16,31 @@ metadata:
 {{- end }}
   name: {{ template "alertmanager.fullname" . }}
 spec:
-  clusterIP: "{{ .Values.service.clusterIP }}"
+{{- if .Values.service.clusterIP }}
+  clusterIP: {{ .Values.service.clusterIP }}
+{{- end }}
 {{- if .Values.service.externalIPs }}
   externalIPs:
 {{ toYaml .Values.service.externalIPs | indent 4 }}
 {{- end }}
 {{- if .Values.service.loadBalancerIP }}
-  loadBalancerIP: "{{ .Values.service.loadBalancerIP }}"
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
 {{- end }}
 {{- if .Values.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
-{{ toYaml .Values.service.loadBalancerSourceRanges | indent 4 }}
+  {{- range $cidr := .Values.service.loadBalancerSourceRanges }}
+    - {{ $cidr }}
+  {{- end }}
 {{- end }}
   ports:
     - name: http
-    {{- if eq .Values.service.type "NodePort" }}
+      port: {{ .Values.service.webPort }}
+      protocol: TCP
+      targetPort: {{ .Values.service.webPort }}
+    {{- if .Values.service.nodePort }}
       nodePort: {{ .Values.service.nodePort }}
     {{- end }}
-      port: 9093
-      targetPort: 9093
-      protocol: TCP
   selector:
-    alertmanager: {{ .Release.Name }}
     app: {{ template "alertmanager.name" . }}
+    release: {{ .Release.Name }}
   type: "{{ .Values.service.type }}"

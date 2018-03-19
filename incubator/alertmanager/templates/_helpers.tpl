@@ -24,6 +24,18 @@ If release name contains chart name it will be used as a full name.
 {{- end -}}
 {{- end -}}
 
+
+{{/*
+Return the appropriate apiVersion for networkpolicy.
+*/}}
+{{- define "prometheus.networkPolicy.apiVersion" -}}
+{{- if and (ge .Capabilities.KubeVersion.Minor "4") (le .Capabilities.KubeVersion.Minor "6") -}}
+{{- print "extensions/v1beta1" -}}
+{{- else if ge .Capabilities.KubeVersion.Minor "7" -}}
+{{- print "networking.k8s.io/v1" -}}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Return the appropriate apiVersion value to use for the prometheus-operator managed k8s resources
 */}}
@@ -34,3 +46,15 @@ Return the appropriate apiVersion value to use for the prometheus-operator manag
 {{- printf "%s" "monitoring.coreos.com/v1alpha1" -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Prometheus operator requires for alertmanager config secret to follow the naming: alertmanager-{ALERTMANAGER_NAME}
+*/}}
+{{- define "config-secret.name" -}}
+{{- if eq .Values.deploymentMode "PrometheusOperator" -}}
+{{- printf "alertmanager-%s" .Release.Name -}}
+{{- else }}
+{{ template "alertmanager.fullname" . }}
+{{- end -}}
+{{- end -}}
+
